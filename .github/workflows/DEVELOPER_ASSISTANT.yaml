@@ -7,12 +7,15 @@ on:
  
 jobs:
   pr_agent_job:
-    if: ((contains(github.event.comment.body, '/review') ||
-        contains(github.event.comment.body, '/describe')) && github.event.comment.user.login != 'nex-maximus') ||
-        github.event_name == 'pull_request' && github.event.pull_request.user.login != 'nex-maximus'
+   
     runs-on: [self-hosted, genai_copilot-code-review]
     steps:
+      - name: Check if commenter is a collaborator
+        id: check_collaborator
+        run: echo "::set-output name=is_collaborator::${{ github.event.comment.author_association == 'COLLABORATOR' }}"
+ 
       - name: PR Agent action step
+        if: ((contains(github.event.comment.body, '/review') || contains(github.event.comment.body, '/describe')) && github.event.comment.user.login != 'nex-maximus' && steps.check_collaborator.outputs.is_collaborator == 'true') || github.event_name == 'pull_request' && github.event.pull_request.user.login != 'nex-maximus' && steps.check_collaborator.outputs.is_collaborator == 'true'
         id: pragent
         run: |
          cd  ../../../genai_pr_agent
