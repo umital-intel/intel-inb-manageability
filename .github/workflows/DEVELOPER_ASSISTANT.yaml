@@ -1,33 +1,25 @@
-name: DEVELOPER ASSISTANT
+name: CODE REVIEW REPORT
 on:
   pull_request:
-    types:
-      - opened
+      types: [opened, edited, reopened, synchronize]
   issue_comment:
- 
 jobs:
-  pr_agent_job:
-   
-    runs-on: [self-hosted, genai_copilot-code-review]
+  pr_agent_report:
+    if: (contains(github.event.comment.body, '/generate_report') && github.event.comment.user.login != 'nex-maximus') ||
+        github.event_name == 'pull_request' && github.event.pull_request.user.login != 'nex-maximus'
+    runs-on: [self-hosted, genai_copilot-code-review-IAPM]
     steps:
-      - name: Check if commenter is a collaborator or owner/admin
-        id: check_collaborator_or_owner_admin
-        run: |
-          if [ "${{ github.event.comment.author_association }}" == "COLLABORATOR" ] || [ "${{ github.event.comment.author_association }}" == "OWNER" ] || [ "${{ github.event.comment.author_association }}" == "MEMBER" ]; then
-            echo "::set-output name=is_collaborator_or_owner_admin::true"
-          else
-            echo "::set-output name=is_collaborator_or_owner_admin::false"
-          fi
- 
       - name: PR Agent action step
-        if: ((contains(github.event.comment.body, '/review') || contains(github.event.comment.body, '/describe')) && github.event.comment.user.login != 'nex-maximus' && steps.check_collaborator_or_owner_admin.outputs.is_collaborator_or_owner_admin == 'true') || github.event_name == 'pull_request' && github.event.pull_request.user.login != 'nex-maximus' && steps.check_collaborator_or_owner_admin.outputs.is_collaborator_or_owner_admin == 'true'
         id: pragent
-        run: |
-         cd  ../../../genai_pr_agent
-         chmod +x ./get_pr_agent_details.sh
-         ./get_pr_agent_details.sh
+        uses: intel-innersource/frameworks.actions.maximus.genai-gpt/create-code-review-report@feature/dependent_code_review
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_ACTION.AUTO_REVIEW: false
           GITHUB_ACTION.AUTO_DESCRIBE: false
           GITHUB_ACTION.UPDATE_TITLE: false
+          # Uncomment the line below to add any extra instructions you wish to give to the LLM
+          # GITHUB_ACTION.EXTRA_INSTRUCTIONS: 'Please give clear review for the user'
+          # Uncomment the line below to push all the suggestions for all the files as a batch instead of pushing it per file in the PR
+          # GITHUB_ACTION.BATCH_SUGGESTION_PUSH: true
+          # To enable dependent context from external repo/internal repo uncomment the line below and add details in .github/dependent_files.json   
+          # GITHUB_ACTION.ENABLE_DEPENDENT_CONTEXT: true
